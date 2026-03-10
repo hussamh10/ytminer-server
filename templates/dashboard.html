@@ -226,21 +226,19 @@
 <div class="section">
   <div class="section-title">how to participate</div>
   <div class="guide">
-    <p>Install the client:</p>
-    <pre id="install-cmd">pip install ytminer-client</pre>
+    <p>Requires Python 3.10+. Install (one-time):</p>
+    <pre id="install-cmd">python3 -m venv ytminer-env && ytminer-env/bin/pip install -q -U pip && ytminer-env/bin/pip install -q git+https://github.com/hussamh10/ytminer-client.git</pre>
 
     <p>Start downloading:</p>
-    <pre id="run-cmd">ytminer-download --server SERVER_URL --output ./videos</pre>
+    <pre id="run-cmd">ytminer-env/bin/ytminer-download --server SERVER_URL --output ./videos</pre>
 
     <p>Options:</p>
     <pre>--worker-name NAME       your name (default: hostname)
 --channel @geonews       download specific channel only
---cookies FILE           path to cookies.txt
---cookies-from-browser chrome    auto-extract from browser
---delay 5                seconds between downloads
---batch-size 50          videos per batch</pre>
+--delay 10               seconds between downloads (default: 30)
+--batch-size 50          videos per batch (default: 50)</pre>
 
-    <p>The client handles rate limiting, retries, and cookie fallback automatically. Downloaded videos are saved as mp4 with metadata json alongside. Progress is reported back to this server.</p>
+    <p>Browser cookies are auto-detected if YouTube blocks you. Rate limiting, retries, and error reporting are all handled automatically. Videos are saved as mp4 with metadata json alongside.</p>
   </div>
 </div>
 
@@ -348,10 +346,8 @@ async function refresh() {
 
 // set server URL in guide
 const origin = window.location.origin;
-document.getElementById('install-cmd').textContent =
-  'pip install ' + origin + '/download/client';
 document.getElementById('run-cmd').textContent =
-  'ytminer-download --server ' + origin + ' --output ./videos';
+  'ytminer-env/bin/ytminer-download --server ' + origin + ' --output ./videos';
 
 refresh();
 </script>
