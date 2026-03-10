@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="30">
+<title>ytminer</title>
+<style>
+  :root {
+    --fg: #1a1a1a;
+    --bg: #fafafa;
+    --mid: #999;
+    --dim: #ccc;
+    --bar: #1a1a1a;
+    --bar-bg: #e5e5e5;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "Berkeley Mono", "SF Mono", "Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--fg);
+    background: var(--bg);
+    padding: 40px 40px 80px;
+    max-width: 960px;
+  }
+
+  h1 {
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    color: var(--mid);
+    margin-bottom: 40px;
+  }
+
+  .section {
+    margin-bottom: 40px;
+  }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-bottom: 12px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--dim);
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0;
+  }
+
+  .stat {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--dim);
+  }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 400;
+    line-height: 1.2;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--mid);
+    letter-spacing: 0.05em;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th {
+    text-align: left;
+    font-weight: 400;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mid);
+    padding: 6px 12px 6px 0;
+    border-bottom: 1px solid var(--fg);
+  }
+
+  td {
+    padding: 6px 12px 6px 0;
+    border-bottom: 1px solid var(--dim);
+    vertical-align: top;
+  }
+
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .bar-cell { width: 180px; }
+
+  .bar {
+    height: 8px;
+    background: var(--bar-bg);
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: var(--bar);
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  .worker-active { color: var(--fg); }
+  .worker-stale { color: var(--mid); }
+
+  .guide {
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+  .guide pre {
+    background: var(--fg);
+    color: var(--bg);
+    padding: 16px 20px;
+    margin: 8px 0 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .guide p {
+    margin-bottom: 8px;
+  }
+
+  .footer {
+    margin-top: 60px;
+    padding-top: 12px;
+    border-top: 1px solid var(--dim);
+    color: var(--mid);
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+<h1>ytminer</h1>
+<div class="subtitle">distributed youtube video archive</div>
+
+<!-- overview -->
+<div class="section">
+  <div class="section-title">overview</div>
+  <div class="stat-grid">
+    <div class="stat">
+      <div class="stat-value" id="v-total">--</div>
+      <div class="stat-label">total videos</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="v-done">--</div>
+      <div class="stat-label">completed</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="v-pending">--</div>
+      <div class="stat-label">remaining</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="v-rate">--</div>
+      <div class="stat-label">per hour</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="v-pct">--</div>
+      <div class="stat-label">progress</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="v-eta">--</div>
+      <div class="stat-label">est. completion</div>
+    </div>
+  </div>
+</div>
+
+<!-- channels -->
+<div class="section">
+  <div class="section-title">channels</div>
+  <table>
+    <thead>
+      <tr>
+        <th>channel</th>
+        <th class="num">total</th>
+        <th class="num">done</th>
+        <th class="num">%</th>
+        <th class="bar-cell">progress</th>
+      </tr>
+    </thead>
+    <tbody id="channels-body"></tbody>
+  </table>
+</div>
+
+<!-- workers -->
+<div class="section">
+  <div class="section-title">workers</div>
+  <table>
+    <thead>
+      <tr>
+        <th>name</th>
+        <th class="num">done</th>
+        <th class="num">failed</th>
+        <th class="num">skipped</th>
+        <th>last seen</th>
+        <th>status</th>
+      </tr>
+    </thead>
+    <tbody id="workers-body"></tbody>
+  </table>
+  <div id="no-workers" style="color: var(--mid); padding: 12px 0; display: none;">no active workers</div>
+</div>
+
+<!-- how to participate -->
+<div class="section">
+  <div class="section-title">how to participate</div>
+  <div class="guide">
+    <p>Install the client:</p>
+    <pre id="install-cmd">pip install ytminer-client</pre>
+
+    <p>Start downloading:</p>
+    <pre id="run-cmd">ytminer-download --server SERVER_URL --output ./videos</pre>
+
+    <p>Options:</p>
+    <pre>--worker-name NAME       your name (default: hostname)
+--channel @geonews       download specific channel only
+--cookies FILE           path to cookies.txt
+--cookies-from-browser chrome    auto-extract from browser
+--delay 5                seconds between downloads
+--batch-size 50          videos per batch</pre>
+
+    <p>The client handles rate limiting, retries, and cookie fallback automatically. Downloaded videos are saved as mp4 with metadata json alongside. Progress is reported back to this server.</p>
+  </div>
+</div>
+
+<div class="footer">
+  auto-refresh 30s &middot; <span id="last-update"></span>
+</div>
+
+<script>
+function fmt(n) {
+  if (n == null) return '--';
+  return n.toLocaleString();
+}
+
+function pct(a, b) {
+  if (!b) return '0.0';
+  return (100 * a / b).toFixed(1);
+}
+
+function ago(iso) {
+  if (!iso) return '--';
+  const d = new Date(iso);
+  const now = new Date();
+  const mins = Math.floor((now - d) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ' + (mins % 60) + 'm ago';
+  const days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+
+function etaDate(remaining, ratePerHour) {
+  if (!ratePerHour || ratePerHour <= 0) return '--';
+  const hours = remaining / ratePerHour;
+  const days = Math.floor(hours / 24);
+  if (days > 365) return '--';
+  const target = new Date(Date.now() + hours * 3600000);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if (days > 30) return months[target.getMonth()] + ' ' + target.getFullYear();
+  if (days > 1) return days + 'd (' + months[target.getMonth()] + ' ' + target.getDate() + ')';
+  return Math.ceil(hours) + 'h';
+}
+
+async function refresh() {
+  try {
+    const resp = await fetch('/status');
+    const data = await resp.json();
+    const t = data.total;
+
+    const done = (t.done || 0) + (t.skipped || 0);
+    const remaining = (t.pending || 0) + (t.assigned || 0);
+    const rate = data.rate_per_hour || 0;
+
+    document.getElementById('v-total').textContent = fmt(t.total);
+    document.getElementById('v-done').textContent = fmt(done);
+    document.getElementById('v-pending').textContent = fmt(remaining);
+    document.getElementById('v-rate').textContent = rate > 0 ? fmt(rate) : '--';
+    document.getElementById('v-pct').textContent = pct(done, t.total) + '%';
+    document.getElementById('v-eta').textContent = etaDate(remaining, rate);
+
+    // channels
+    const cb = document.getElementById('channels-body');
+    const sorted = Object.entries(data.channels).sort((a,b) => b[1].total - a[1].total);
+    cb.innerHTML = sorted.map(([name, ch]) => {
+      const chDone = (ch.done || 0) + (ch.skipped || 0);
+      const p = pct(chDone, ch.total);
+      return `<tr>
+        <td>${name}</td>
+        <td class="num">${fmt(ch.total)}</td>
+        <td class="num">${fmt(chDone)}</td>
+        <td class="num">${p}%</td>
+        <td class="bar-cell"><div class="bar"><div class="bar-fill" style="width:${p}%"></div></div></td>
+      </tr>`;
+    }).join('');
+
+    // workers
+    const wb = document.getElementById('workers-body');
+    const nw = document.getElementById('no-workers');
+    if (data.workers.length === 0) {
+      wb.innerHTML = '';
+      nw.style.display = 'block';
+    } else {
+      nw.style.display = 'none';
+      wb.innerHTML = data.workers.map(w => {
+        const lastSeen = new Date(w.last_seen);
+        const staleMin = (Date.now() - lastSeen) / 60000;
+        const cls = staleMin < 10 ? 'worker-active' : 'worker-stale';
+        const status = staleMin < 10 ? 'active' : 'idle';
+        return `<tr class="${cls}">
+          <td>${w.name}</td>
+          <td class="num">${fmt(w.total_done)}</td>
+          <td class="num">${fmt(w.total_failed)}</td>
+          <td class="num">${fmt(w.total_skipped)}</td>
+          <td>${ago(w.last_seen)}</td>
+          <td>${status}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+  } catch(e) {
+    console.error('refresh failed:', e);
+  }
+}
+
+// set server URL in guide
+const origin = window.location.origin;
+document.getElementById('install-cmd').textContent =
+  'pip install ' + origin + '/download/client';
+document.getElementById('run-cmd').textContent =
+  'ytminer-download --server ' + origin + ' --output ./videos';
+
+refresh();
+</script>
+</body>
+</html>
