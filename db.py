@@ -85,7 +85,7 @@ def assign_batch(
     now = datetime.now(timezone.utc).isoformat()
     batch_id = uuid.uuid4().hex[:12]
 
-    # Build query
+    # Build query — prioritize @geonews, then other channels
     where = "status = 'pending' AND attempts < ?"
     params: list = [max_attempts]
     if channel:
@@ -94,7 +94,9 @@ def assign_batch(
     params.append(batch_size)
 
     rows = conn.execute(
-        f"SELECT video_id, channel FROM videos WHERE {where} LIMIT ?",
+        f"SELECT video_id, channel FROM videos WHERE {where} "
+        f"ORDER BY CASE WHEN channel = '@geonews' THEN 0 ELSE 1 END "
+        f"LIMIT ?",
         params,
     ).fetchall()
 

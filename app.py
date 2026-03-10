@@ -76,6 +76,7 @@ class ReportRequest(BaseModel):
     worker: str
     results: dict  # {video_id: "ok"|"failed"|"skipped"}
     errors: Optional[dict] = None  # {video_id: error_category}
+    channel: Optional[str] = None  # channel filter for next batch
 
 
 # ─── Endpoints ───────────────────────────────────────────────────
@@ -120,8 +121,8 @@ def post_report(body: ReportRequest):
             )
         conn.commit()
 
-    # Immediately assign next batch
-    next_batch = db.assign_batch(conn, body.worker)
+    # Immediately assign next batch (respect channel filter)
+    next_batch = db.assign_batch(conn, body.worker, channel=body.channel)
     conn.close()
 
     return {"counts": counts, "next_batch": next_batch}
