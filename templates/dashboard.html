@@ -231,13 +231,17 @@
   <div class="section-title">how to participate</div>
   <div class="guide">
     <p>Requires Python 3.10+. Install (one-time):</p>
-    <pre id="install-cmd">python3 -m venv ytminer-env && ytminer-env/bin/pip install -q -U pip && ytminer-env/bin/pip install -q git+https://github.com/hussamh10/ytminer-client.git</pre>
+    <pre id="install-cmd">pip install ytminer-client</pre>
 
     <p>Start downloading:</p>
-    <pre id="run-cmd">ytminer-env/bin/ytminer-download --server SERVER_URL --output ./videos</pre>
+    <pre id="run-cmd">ytminer-download --server SERVER_URL --output ./videos</pre>
 
     <p>Update client:</p>
-    <pre>ytminer-env/bin/pip install -q --force-reinstall git+https://github.com/hussamh10/ytminer-client.git</pre>
+    <pre>pip install -U ytminer-client</pre>
+
+    <p>Google Colab:</p>
+    <pre>!pip install ytminer-client
+!ytminer-download --server SERVER_URL --output ./videos --upload</pre>
 
     <p>Options:</p>
     <pre>--worker-name NAME       your name (default: hostname)
