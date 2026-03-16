@@ -240,7 +240,7 @@
     <pre>pip install -U ytminer-client</pre>
 
     <p>Google Colab:</p>
-    <pre>!pip install ytminer-client
+    <pre id="colab-cmd">!pip install ytminer-client
 !ytminer-download --server SERVER_URL --output ./videos --upload</pre>
 
     <p>Options:</p>
@@ -365,7 +365,9 @@ async function refresh() {
 // set server URL in guide
 const origin = window.location.origin;
 document.getElementById('run-cmd').textContent =
-  'ytminer-env/bin/ytminer-download --server ' + origin + ' --output ./videos';
+  'ytminer-download --server ' + origin + ' --output ./videos';
+document.getElementById('colab-cmd').textContent =
+  '!pip install ytminer-client\n!ytminer-download --server ' + origin + ' --output ./videos --upload';
 
 refresh();
 </script>
