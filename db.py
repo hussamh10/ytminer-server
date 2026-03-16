@@ -46,6 +46,19 @@ def init_db(conn: sqlite3.Connection) -> None:
     """)
     conn.commit()
 
+    # Add upload columns (safe to run on existing DBs)
+    for stmt in [
+        "ALTER TABLE videos ADD COLUMN uploaded INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE videos ADD COLUMN uploaded_at TEXT",
+        "ALTER TABLE workers ADD COLUMN total_uploaded INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE workers ADD COLUMN total_upload_bytes INTEGER NOT NULL DEFAULT 0",
+    ]:
+        try:
+            conn.execute(stmt)
+        except sqlite3.OperationalError:
+            pass  # column already exists
+    conn.commit()
+
 
 def load_video_ids(conn: sqlite3.Connection, video_ids_dir: str) -> dict:
     """Load video IDs from .txt files into the database. Returns {channel: count_added}."""
@@ -200,7 +213,8 @@ def get_status(conn: sqlite3.Connection) -> dict:
     # Workers
     workers = []
     for r in conn.execute(
-        "SELECT name, last_seen, total_done, total_failed, total_skipped, ip_address FROM workers ORDER BY last_seen DESC"
+        "SELECT name, last_seen, total_done, total_failed, total_skipped, "
+        "total_uploaded, total_upload_bytes, ip_address FROM workers ORDER BY last_seen DESC"
     ).fetchall():
         workers.append(dict(r))
 
@@ -210,7 +224,8 @@ def get_status(conn: sqlite3.Connection) -> dict:
         "SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) as done, "
         "SUM(CASE WHEN status='assigned' THEN 1 ELSE 0 END) as assigned, "
         "SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) as pending, "
-        "SUM(CASE WHEN status='skipped' THEN 1 ELSE 0 END) as skipped "
+        "SUM(CASE WHEN status='skipped' THEN 1 ELSE 0 END) as skipped, "
+        "SUM(CASE WHEN uploaded=1 THEN 1 ELSE 0 END) as uploaded "
         "FROM videos"
     ).fetchone()
 

@@ -8,6 +8,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
+from datetime import datetime, timezone
+
 from fastapi import FastAPI, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
@@ -19,9 +21,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message
 
 import os
 
-CLIENT_VERSION = "0.1.0"
+CLIENT_VERSION = "0.2.0"
 DB_PATH = os.environ.get("DB_PATH", "server.db")
 VIDEO_IDS_DIR = os.environ.get("VIDEO_IDS_DIR", "./news-downloader/data/video_ids/")
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "./uploads")
 
 
 def get_conn():
@@ -126,6 +129,45 @@ def post_report(body: ReportRequest):
     conn.close()
 
     return {"counts": counts, "next_batch": next_batch}
+
+
+@app.post("/upload/{channel}/{video_id}")
+async def upload_video(
+    channel: str,
+    video_id: str,
+    request: Request,
+    worker: str = Query(...),
+    filename: str = Query(...),
+):
+    """Receive a streamed file upload (video or info.json)."""
+    dest_dir = Path(UPLOAD_DIR) / channel
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_path = dest_dir / filename
+
+    total_bytes = 0
+    with open(dest_path, "wb") as f:
+        async for chunk in request.stream():
+            f.write(chunk)
+            total_bytes += len(chunk)
+
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_conn()
+
+    # Mark video as uploaded (only for .mp4, not .info.json)
+    if filename.endswith(".mp4"):
+        conn.execute(
+            "UPDATE videos SET uploaded=1, uploaded_at=? WHERE video_id=?",
+            (now, video_id),
+        )
+        conn.execute(
+            "UPDATE workers SET total_uploaded=total_uploaded+1, "
+            "total_upload_bytes=total_upload_bytes+? WHERE name=?",
+            (total_bytes, worker),
+        )
+        conn.commit()
+
+    conn.close()
+    return {"status": "ok", "bytes": total_bytes}
 
 
 @app.get("/status")

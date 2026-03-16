@@ -176,6 +176,10 @@
       <div class="stat-label">per hour</div>
     </div>
     <div class="stat">
+      <div class="stat-value" id="v-uploaded">--</div>
+      <div class="stat-label">uploaded</div>
+    </div>
+    <div class="stat">
       <div class="stat-value" id="v-pct">--</div>
       <div class="stat-label">progress</div>
     </div>
@@ -211,8 +215,8 @@
       <tr>
         <th>name</th>
         <th class="num">done</th>
+        <th class="num">uploaded</th>
         <th class="num">failed</th>
-        <th class="num">skipped</th>
         <th>last seen</th>
         <th>status</th>
       </tr>
@@ -232,13 +236,22 @@
     <p>Start downloading:</p>
     <pre id="run-cmd">ytminer-env/bin/ytminer-download --server SERVER_URL --output ./videos</pre>
 
+    <p>Update client:</p>
+    <pre>ytminer-env/bin/pip install -q --force-reinstall git+https://github.com/hussamh10/ytminer-client.git</pre>
+
     <p>Options:</p>
     <pre>--worker-name NAME       your name (default: hostname)
 --channel @geonews       download specific channel only
 --delay 10               seconds between downloads (default: 30)
---batch-size 50          videos per batch (default: 50)</pre>
+--batch-size 50          videos per batch (default: 50)
+--upload                 upload videos to server after download
+--keep-files             keep local files after upload (default: delete)
+--cookies FILE           path to cookies.txt
+--verbose                show debug logs</pre>
 
-    <p>Browser cookies are auto-detected if YouTube blocks you. Rate limiting, retries, and error reporting are all handled automatically. Videos are saved as mp4 with metadata json alongside.</p>
+    <p>For ephemeral environments (Google Colab, etc.), use --upload to stream videos to the server immediately after download. Local files are deleted after upload to save disk.</p>
+
+    <p>Browser cookies are auto-detected if YouTube blocks you. Rate limiting, retries, bot cooldown, and error reporting are all handled automatically.</p>
   </div>
 </div>
 
@@ -296,6 +309,7 @@ async function refresh() {
     document.getElementById('v-done').textContent = fmt(done);
     document.getElementById('v-pending').textContent = fmt(remaining);
     document.getElementById('v-rate').textContent = rate > 0 ? fmt(rate) : '--';
+    document.getElementById('v-uploaded').textContent = fmt(t.uploaded || 0);
     document.getElementById('v-pct').textContent = pct(done, t.total) + '%';
     document.getElementById('v-eta').textContent = etaDate(remaining, rate);
 
@@ -330,8 +344,8 @@ async function refresh() {
         return `<tr class="${cls}">
           <td>${w.name}</td>
           <td class="num">${fmt(w.total_done)}</td>
+          <td class="num">${fmt(w.total_uploaded || 0)}</td>
           <td class="num">${fmt(w.total_failed)}</td>
-          <td class="num">${fmt(w.total_skipped)}</td>
           <td>${ago(w.last_seen)}</td>
           <td>${status}</td>
         </tr>`;
