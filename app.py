@@ -4,22 +4,24 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
+from functools import partial
 from pathlib import Path
 from typing import Optional
 
 from datetime import datetime, timezone
 
+import aiofiles
 from fastapi import FastAPI, Query, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
+from starlette.requests import ClientDisconnect
 
 from . import db
 
 logger = logging.getLogger("server")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
-
-import os
 
 CLIENT_VERSION = "0.2.0"
 DB_PATH = os.environ.get("DB_PATH", "server.db")
@@ -145,15 +147,36 @@ async def upload_video(
     dest_path = dest_dir / filename
 
     total_bytes = 0
-    with open(dest_path, "wb") as f:
-        async for chunk in request.stream():
-            f.write(chunk)
-            total_bytes += len(chunk)
+    try:
+        async with aiofiles.open(dest_path, "wb") as f:
+            async for chunk in request.stream():
+                await f.write(chunk)
+                total_bytes += len(chunk)
+    except ClientDisconnect:
+        # Client dropped mid-upload — clean up partial file
+        if dest_path.exists():
+            dest_path.unlink()
+        logger.warning(
+            "Client disconnected during upload: %s/%s (%s, %s bytes received)",
+            channel, video_id, filename, total_bytes,
+        )
+        return JSONResponse(
+            {"error": "client disconnected", "bytes_received": total_bytes},
+            status_code=499,
+        )
 
+    # Run DB update in thread pool to avoid blocking the event loop
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(
+        None, partial(_mark_uploaded, video_id, filename, total_bytes, worker),
+    )
+    return {"status": "ok", "bytes": total_bytes}
+
+
+def _mark_uploaded(video_id: str, filename: str, total_bytes: int, worker: str):
+    """Synchronous DB update, run in a thread pool."""
     now = datetime.now(timezone.utc).isoformat()
     conn = get_conn()
-
-    # Mark video as uploaded (only for .mp4, not .info.json)
     if filename.endswith(".mp4"):
         conn.execute(
             "UPDATE videos SET uploaded=1, uploaded_at=? WHERE video_id=?",
@@ -165,9 +188,7 @@ async def upload_video(
             (total_bytes, worker),
         )
         conn.commit()
-
     conn.close()
-    return {"status": "ok", "bytes": total_bytes}
 
 
 @app.get("/status")
